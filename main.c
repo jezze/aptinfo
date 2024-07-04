@@ -584,7 +584,7 @@ static void printentry(FILE *file, char *fmt, struct entry *entry)
 
     result[c] = '\0';
 
-    fprintf(file, result);
+    fprintf(file, "%s", result);
 
 }
 
@@ -696,7 +696,7 @@ static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
 
     result[c] = '\0';
 
-    fprintf(file, result);
+    fprintf(file, "%s", result);
 
 }
 
