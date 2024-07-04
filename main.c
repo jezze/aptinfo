@@ -1357,7 +1357,7 @@ static int command_list(int argc, char **argv)
     {
 
         printf("list <index-file>...\n\n");
-        printf("List all packages in <index-file>\n");
+        printf("List all packages\n");
 
     }
 
@@ -1421,8 +1421,8 @@ static int command_depends(int argc, char **argv)
     else
     {
 
-        printf("depends <package> <index-file>...\n\n");
-        printf("Show what <package> depends on as defined in <index-file>\n");
+        printf("depends <package-expression> <index-file>...\n\n");
+        printf("Show dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1509,8 +1509,8 @@ static int command_raw(int argc, char **argv)
     else
     {
 
-        printf("raw <package> <index-file>...\n\n");
-        printf("Show raw data of <package> as defined in <index-file>\n");
+        printf("raw <package-expression> <index-file>...\n\n");
+        printf("Show raw data of packages that matches the package expression\n");
 
     }
 
@@ -1604,8 +1604,8 @@ static int command_rdepends(int argc, char **argv)
     else
     {
 
-        printf("provides <package> <index-file>...\n\n");
-        printf("Show what <package> also provides as defined in <index-file>\n");
+        printf("rdepends <package-expression> <index-file>...\n\n");
+        printf("Show packages having dependencies that matches the package expression\n");
 
 
     }
@@ -1672,8 +1672,8 @@ static int command_resolve(int argc, char **argv)
     else
     {
 
-        printf("resolve <package> <index-file>...\n\n");
-        printf("Recursively resolve all dependencies of <package> as defined in <index-file>\n");
+        printf("resolve <package-expression> <index-file>...\n\n");
+        printf("Recursively resolve all dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1753,8 +1753,8 @@ static int command_show(int argc, char **argv)
     else
     {
 
-        printf("depends <package> <index-file>...\n\n");
-        printf("Show dependencies of <package> as defined in <index-file>\n");
+        printf("show <package> <index-file>...\n\n");
+        printf("Show information about a package\n");
 
     }
 
