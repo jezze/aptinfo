@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NUM_CMDS                        7
+#define NUM_CMDS                        8
 #define MAX_ENTRIES                     0x20000
 #define FIELDBUFFER_SIZE                0x1000
 #define LETTERS_UPSTREAM                "~.+-:"
@@ -85,6 +85,7 @@ struct entry
     char version[64];
     char arch[24];
     unsigned int size;
+    unsigned int isize;
     char *filename;
     unsigned int offset;
     unsigned int matched;
@@ -1241,7 +1242,14 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
             else if (!strncmp(line, "Size: ", 6))
             {
 
-                current->size = tonumerical(line, n, 10, 6);
+                current->size = tonumerical(line + 6, n - 7, 10, 0);
+
+            }
+
+            else if (!strncmp(line, "Installed-Size: ", 16))
+            {
+
+                current->isize = tonumerical(line + 16, n - 17, 10, 0);
 
             }
 
@@ -1762,6 +1770,74 @@ static int command_show(int argc, char **argv)
 
 }
 
+static int command_size(int argc, char **argv)
+{
+
+    if (argc >= 2)
+    {
+
+        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+
+        if (nentries)
+        {
+
+            unsigned int size = 0;
+            unsigned int isize = 0;
+            unsigned int offset;
+            unsigned int length;
+
+            for (offset = 0; (length = eachcomma(argv[0], strlen(argv[0]) + 1, offset)); offset += length)
+            {
+
+                struct entry *entry = findmatch(argv[0] + offset, length, entries, nentries);
+
+                if (entry)
+                {
+
+                    size += entry->size;
+                    isize += entry->isize;
+
+                }
+
+                else
+                {
+
+                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+
+                    return EXIT_FAILURE;
+
+                }
+
+            }
+
+            printf("Size: %u\n", size);
+            printf("Installed-Size: %u\n", isize);
+
+        }
+
+        else
+        {
+
+            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+
+            return EXIT_FAILURE;
+
+        }
+
+    }
+
+    else
+    {
+
+        printf("size <package-expression> <index-file>...\n\n");
+        printf("Show the total size of packages that matches the package expression\n");
+
+    }
+
+    return EXIT_SUCCESS;
+
+}
+
 int main(int argc, char **argv)
 {
 
@@ -1774,7 +1850,8 @@ int main(int argc, char **argv)
         {"raw", command_raw},
         {"rdepends", command_rdepends},
         {"resolve", command_resolve},
-        {"show", command_show}
+        {"show", command_show},
+        {"size", command_size}
     };
 
     if (argc < 2)
