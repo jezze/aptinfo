@@ -1,15 +1,29 @@
-PROG=aptinfo
+BIN=aptinfo
 OBJS=main.o
-PREFIX=/usr/local/bin
+PREFIX=/usr/local
+CC=gcc
+CFLAGS=-pedantic -Wall -c
+LD=gcc
+LDFLAGS=
+CP=cp
+RM=rm
+
+.PHONY: all debug install clean
+
+all: ${BIN}
+debug: CFLAGS+=-g
+debug: ${BIN}
 
 %.o: %.c
-	gcc -pedantic -Wall -c -o $@ $<
+	@echo CC $@
+	@${CC} ${CFLAGS} -o $@ $<
 
-${PROG}: ${OBJS}
-	gcc -o $@ $<
+${BIN}: ${OBJS}
+	@echo LD $@
+	@${LD} ${LDFLAGS} -o $@ $<
 
-install:
-	cp ${PROG} ${PREFIX}/${PROG}
+install: ${BIN}
+	${CP} ${BIN} ${PREFIX}/bin/${BIN}
 
 clean:
-	rm -f ${PROG} ${OBJS}
+	${RM} -f ${BIN} ${OBJS}
