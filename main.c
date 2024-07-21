@@ -1183,14 +1183,14 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
             else if (!memcmp(line, "Size: ", 6))
             {
 
-                current->size = tonumerical(line + 6, n - 7, 10, 0);
+                current->size = tonumerical(line, n - 7, 10, 6);
 
             }
 
             else if (!memcmp(line, "Installed-Size: ", 16))
             {
 
-                current->isize = tonumerical(line + 16, n - 17, 10, 0);
+                current->isize = tonumerical(line, n - 17, 10, 16);
 
             }
 
