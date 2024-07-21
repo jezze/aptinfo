@@ -502,13 +502,22 @@ static unsigned int eachpipe(char *data, unsigned int length, unsigned int offse
 
 }
 
+static unsigned int append(char *s1, char *s2, unsigned int length, unsigned int offset)
+{
+
+    memcpy(s1 + offset, s2, length);
+
+    return offset + length;
+
+}
+
 static void printentry(FILE *file, char *fmt, struct entry *entry)
 {
 
     unsigned int length = strlen(fmt);
-    unsigned int c = 0;
-    unsigned int i;
+    unsigned int offset = 0;
     char result[4096];
+    unsigned int i;
 
     for (i = 0; i < length; i++)
     {
@@ -522,50 +531,27 @@ static void printentry(FILE *file, char *fmt, struct entry *entry)
             {
 
             case 'n':
-                strncpy(result + c, entry->name, strlen(entry->name));
-
-                c += strlen(entry->name);
+                offset = append(result, entry->name, strlen(entry->name), offset);
 
                 break;
 
             case 'a':
-                strncpy(result + c, entry->arch, strlen(entry->arch));
-
-                c += strlen(entry->arch);
+                offset = append(result, entry->arch, strlen(entry->arch), offset);
 
                 break;
 
             case 'v':
-                strncpy(result + c, entry->version, strlen(entry->version));
-
-                c += strlen(entry->version);
+                offset = append(result, entry->version, strlen(entry->version), offset);
 
                 break;
 
             case 'A':
-                strncpy(result + c, entry->name, strlen(entry->name));
-
-                c += strlen(entry->name);
-
-                strcpy(result + c, ":");
-
-                c += 1;
-
-                strncpy(result + c, entry->arch, strlen(entry->arch));
-
-                c += strlen(entry->arch);
-
-                strcpy(result + c, " (= ");
-
-                c += 4;
-
-                strncpy(result + c, entry->version, strlen(entry->version));
-
-                c += strlen(entry->version);
-
-                strcpy(result + c, ")");
-
-                c += 1;
+                offset = append(result, entry->name, strlen(entry->name), offset);
+                offset = append(result, ":", 1, offset);
+                offset = append(result, entry->arch, strlen(entry->arch), offset);
+                offset = append(result, " (= ", 4, offset);
+                offset = append(result, entry->version, strlen(entry->version), offset);
+                offset = append(result, ")", 1, offset);
 
                 break;
 
@@ -576,14 +562,13 @@ static void printentry(FILE *file, char *fmt, struct entry *entry)
         else
         {
 
-            result[c] = fmt[i];
-            c++;
+            offset = append(result, fmt + i, 1, offset);
 
         }
 
     }
 
-    result[c] = '\0';
+    offset = append(result, "\0", 1, offset);
 
     fprintf(file, "%s", result);
 
@@ -593,9 +578,9 @@ static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
 {
 
     unsigned int length = strlen(fmt);
-    unsigned int c = 0;
-    unsigned int i;
+    unsigned int offset = 0;
     char result[4096];
+    unsigned int i;
 
     for (i = 0; i < length; i++)
     {
@@ -609,73 +594,44 @@ static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
             {
 
             case 'n':
-                strncpy(result + c, vstring->name.data, vstring->name.length);
-
-                c += vstring->name.length;
+                offset = append(result, vstring->name.data, vstring->name.length, offset);
 
                 break;
 
             case 'a':
-                strncpy(result + c, vstring->arch.data, vstring->arch.length);
-
-                c += vstring->arch.length;
+                offset = append(result, vstring->arch.data, vstring->arch.length, offset);
 
                 break;
 
             case 'r':
-                strncpy(result + c, vstring->relation.data, vstring->relation.length);
-
-                c += vstring->relation.length;
+                offset = append(result, vstring->relation.data, vstring->relation.length, offset);
 
                 break;
 
             case 'v':
-                strncpy(result + c, vstring->version.data, vstring->version.length);
-
-                c += vstring->version.length;
+                offset = append(result, vstring->version.data, vstring->version.length, offset);
 
                 break;
 
             case 'A':
-                strncpy(result + c, vstring->name.data, vstring->name.length);
-
-                c += vstring->name.length;
+                offset = append(result, vstring->name.data, vstring->name.length, offset);
 
                 if (vstring->arch.length)
                 {
 
-                    strcpy(result + c, ":");
-
-                    c += 1;
-
-                    strncpy(result + c, vstring->arch.data, vstring->arch.length);
-
-                    c += vstring->arch.length;
+                    offset = append(result, ":", 1, offset);
+                    offset = append(result, vstring->arch.data, vstring->arch.length, offset);
 
                 }
 
                 if (vstring->relation.length && vstring->version.length)
                 {
 
-                    strcpy(result + c, " (");
-
-                    c += 2;
-
-                    strncpy(result + c, vstring->relation.data, vstring->relation.length);
-
-                    c += vstring->relation.length;
-
-                    strcpy(result + c, " ");
-
-                    c += 1;
-
-                    strncpy(result + c, vstring->version.data, vstring->version.length);
-
-                    c += vstring->version.length;
-
-                    strcpy(result + c, ")");
-
-                    c += 1;
+                    offset = append(result, " (", 2, offset);
+                    offset = append(result, vstring->relation.data, vstring->relation.length, offset);
+                    offset = append(result, " ", 1, offset);
+                    offset = append(result, vstring->version.data, vstring->version.length, offset);
+                    offset = append(result, ")", 1, offset);
 
                 }
 
@@ -688,14 +644,13 @@ static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
         else
         {
 
-            result[c] = fmt[i];
-            c++;
+            offset = append(result, fmt + i, 1, offset);
 
         }
 
     }
 
-    result[c] = '\0';
+    offset = append(result, "\0", 1, offset);
 
     fprintf(file, "%s", result);
 
@@ -798,19 +753,14 @@ static int comparelexical(char *data1, unsigned int offset1, unsigned int length
     unsigned int length = (length1 > length2) ? length1 : length2;
     unsigned int i;
 
-    //printf("comparelex: %.*s %.*s\n", length1, data1 + offset1, length2, data2 + offset2);
-
     for (i = 0; i < length; i++)
     {
 
         unsigned int p1 = tolexical(i < length1 ? data1[offset1 + i] : 0, letters);
         unsigned int p2 = tolexical(i < length2 ? data2[offset2 + i] : 0, letters);
 
-        if (p1 < p2)
-            return -1;
-
-        if (p1 > p2)
-            return 1;
+        if (p1 != p2)
+            return p1 - p2;
 
     }
 
@@ -824,49 +774,44 @@ static int comparenumerical(char *data1, unsigned int offset1, unsigned int leng
     unsigned int n1 = tonumerical(data1, length1, 10, offset1);
     unsigned int n2 = tonumerical(data2, length2, 10, offset2);
 
-    //printf("comparenum: %.*s %.*s (%d, %d)\n", length1, data1 + offset1, length2, data2 + offset2, n1, n2);
-
-    if (n1 < n2)
-        return -1;
-
-    if (n1 > n2)
-        return 1;
+    if (n1 != n2)
+        return n1 - n2;
 
     return 0;
 
 }
 
-static unsigned int checkrelation(unsigned int relation, unsigned int c)
+static unsigned int checkrelation(unsigned int relation, int c)
 {
 
     switch (relation)
     {
 
     case RELATION_EQ:
-        if (c == -1)
+        if (c < 0)
             return COMPARE_INVALID;
 
-        if (c == 1)
+        if (c > 0)
             return COMPARE_INVALID;
 
         break;
 
     case RELATION_LT:
     case RELATION_LTEQ:
-        if (c == -1)
+        if (c < 0)
             return COMPARE_VALID;
 
-        if (c == 1)
+        if (c > 0)
             return COMPARE_INVALID;
 
         break;
 
     case RELATION_GT:
     case RELATION_GTEQ:
-        if (c == -1)
+        if (c < 0)
             return COMPARE_INVALID;
 
-        if (c == 1)
+        if (c > 0)
             return COMPARE_VALID;
 
         break;
@@ -897,8 +842,8 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
 
     v = checkrelation(RELATION_EQ, comparenumerical(version1, offset1, colon1, version2, offset2, colon2));
 
-    if (v)
-        return (v == COMPARE_VALID);
+    if (v != COMPARE_CONTINUE)
+        return v;
 
     offset1 += colon1;
     offset2 += colon2;
@@ -911,8 +856,8 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
 
         v = checkrelation(relation, comparelexical(version1, offset1, lex1, version2, offset2, lex2, LETTERS_UPSTREAM));
 
-        if (v)
-            return (v == COMPARE_VALID);
+        if (v != COMPARE_CONTINUE)
+            return v;
 
         offset1 += lex1;
         offset2 += lex2;
@@ -921,8 +866,8 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
 
         v = checkrelation(relation, comparenumerical(version1, offset1, num1, version2, offset2, num2));
 
-        if (v)
-            return (v == COMPARE_VALID);
+        if (v != COMPARE_CONTINUE)
+            return v;
 
         offset1 += num1;
         offset2 += num2;
@@ -940,8 +885,8 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
 
         v = checkrelation(relation, comparelexical(version1, offset1, lex1, version2, offset2, lex2, LETTERS_REVISION));
 
-        if (v)
-            return (v == COMPARE_VALID);
+        if (v != COMPARE_CONTINUE)
+            return v;
 
         offset1 += lex1;
         offset2 += lex2;
@@ -949,8 +894,8 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
         num2 = readnumerical(version2, length2, offset2);
         v = checkrelation(relation, comparenumerical(version1, offset1, num1, version2, offset2, num2));
 
-        if (v)
-            return (v == COMPARE_VALID);
+        if (v != COMPARE_CONTINUE)
+            return v;
 
         offset1 += num1;
         offset2 += num2;
@@ -963,11 +908,11 @@ static unsigned int compareversions(unsigned int relation, char *version1, unsig
     case RELATION_EQ:
     case RELATION_LTEQ:
     case RELATION_GTEQ:
-        return 1;
+        return COMPARE_VALID;
 
     }
 
-    return 0;
+    return COMPARE_INVALID;
 
 }
 
@@ -985,7 +930,7 @@ static struct entry *findentry(struct vstring *vstring, struct entry *entries, u
         if (snippet_matchentry(&vstring->name, current))
         {
 
-            if (compareversions(relation, current->version, strlen(current->version), vstring->version.data, vstring->version.length))
+            if (compareversions(relation, current->version, strlen(current->version), vstring->version.data, vstring->version.length) == COMPARE_VALID)
                 return current;
 
         }
@@ -1022,7 +967,7 @@ static struct entry *findentryprovides(struct vstring *vstring, struct entry *en
                 if (snippet_match(&vstring->name, &provided.name))
                 {
 
-                    if (compareversions(relation, provided.version.data, provided.version.length, vstring->version.data, vstring->version.length))
+                    if (compareversions(relation, provided.version.data, provided.version.length, vstring->version.data, vstring->version.length) == COMPARE_VALID)
                         return current;
 
                 }
@@ -1221,21 +1166,21 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
             else if (!strncmp(line, "Package: ", 9))
             {
 
-                strncpy(current->name, line + 9, n - 10);
+                memcpy(current->name, line + 9, n - 10);
 
             }
 
             else if (!strncmp(line, "Version: ", 9))
             {
 
-                strncpy(current->version, line + 9, n - 10);
+                memcpy(current->version, line + 9, n - 10);
 
             }
 
             else if (!strncmp(line, "Architecture: ", 14))
             {
 
-                strncpy(current->arch, line + 14, n - 15);
+                memcpy(current->arch, line + 14, n - 15);
 
             }
 
@@ -1296,7 +1241,7 @@ static int command_compare(int argc, char **argv)
 
             unsigned int valid = compareversions(relation, argv[0], strlen(argv[0]), argv[2], strlen(argv[2]));
 
-            printf("%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid ? "OK" : "NOT OK");
+            printf("%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid == COMPARE_VALID ? "OK" : "NOT OK");
 
         }
 
@@ -1572,7 +1517,7 @@ static int command_rdepends(int argc, char **argv)
 
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
-                                    if (compareversions(relation, entry->version, strlen(entry->version), dependency.version.data, dependency.version.length))
+                                    if (compareversions(relation, entry->version, strlen(entry->version), dependency.version.data, dependency.version.length) == COMPARE_VALID)
                                         printentry(stdout, "%A\n", current);
 
                                 }
