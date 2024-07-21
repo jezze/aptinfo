@@ -61,8 +61,6 @@ struct substring
 struct vstring
 {
 
-    char *data;
-    unsigned int length;
     struct snippet name;
     struct snippet arch;
     struct snippet relation;
@@ -84,9 +82,7 @@ struct entry
     char namedata[64];
     char versiondata[64];
     char archdata[24];
-    struct snippet name;
-    struct snippet version;
-    struct snippet arch;
+    struct vstring vstring;
     unsigned int size;
     unsigned int isize;
     char *filename;
@@ -113,9 +109,6 @@ static void snippet_init(struct snippet *snippet, char *data, unsigned int lengt
 
 static void vstring_init(struct vstring *vstring, char *data, unsigned int length, struct substring *name, struct substring *arch, struct substring *relation, struct substring *version)
 {
-
-    vstring->data = data;
-    vstring->length = length;
 
     snippet_init(&vstring->name, data + name->offset, (name->end > name->offset) ? name->end - name->offset + 1 : 0);
     snippet_init(&vstring->arch, data + arch->offset, (arch->end > arch->offset) ? arch->end - arch->offset + 1 : 0);
@@ -507,69 +500,6 @@ static unsigned int append(char *s1, char *s2, unsigned int length, unsigned int
 
 }
 
-static void printentry(FILE *file, char *fmt, struct entry *entry)
-{
-
-    unsigned int length = strlen(fmt);
-    unsigned int offset = 0;
-    char result[4096];
-    unsigned int i;
-
-    for (i = 0; i < length; i++)
-    {
-
-        if (fmt[i] == '%')
-        {
-
-            i++;
-
-            switch (fmt[i])
-            {
-
-            case 'n':
-                offset = append(result, entry->name.data, entry->name.length, offset);
-
-                break;
-
-            case 'a':
-                offset = append(result, entry->arch.data, entry->arch.length, offset);
-
-                break;
-
-            case 'v':
-                offset = append(result, entry->version.data, entry->version.length, offset);
-
-                break;
-
-            case 'A':
-                offset = append(result, entry->name.data, entry->name.length, offset);
-                offset = append(result, ":", 1, offset);
-                offset = append(result, entry->arch.data, entry->arch.length, offset);
-                offset = append(result, " (= ", 4, offset);
-                offset = append(result, entry->version.data, entry->version.length, offset);
-                offset = append(result, ")", 1, offset);
-
-                break;
-
-            }
-
-        }
-
-        else
-        {
-
-            offset = append(result, fmt + i, 1, offset);
-
-        }
-
-    }
-
-    offset = append(result, "\0", 1, offset);
-
-    fprintf(file, "%s", result);
-
-}
-
 static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
 {
 
@@ -923,10 +853,10 @@ static struct entry *findentry(struct vstring *vstring, struct entry *entries, u
 
         struct entry *current = &entries[i];
 
-        if (snippet_match(&vstring->name, &current->name))
+        if (snippet_match(&vstring->name, &current->vstring.name))
         {
 
-            if (compareversions(relation, current->version.data, current->version.length, vstring->version.data, vstring->version.length) == COMPARE_VALID)
+            if (compareversions(relation, current->vstring.version.data, current->vstring.version.length, vstring->version.data, vstring->version.length) == COMPARE_VALID)
                 return current;
 
         }
@@ -1143,6 +1073,11 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
                     current++;
                     nentries++;
 
+                    snippet_init(&current->vstring.name, current->namedata, 0);
+                    snippet_init(&current->vstring.version, current->versiondata, 0);
+                    snippet_init(&current->vstring.relation, "=", 1);
+                    snippet_init(&current->vstring.arch, current->archdata, 0);
+
                     current->filename = filename;
                     current->offset = offset + 1;
 
@@ -1162,21 +1097,21 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
             else if (!memcmp(line, "Package: ", 9))
             {
 
-                snippet_init(&current->name, current->namedata, append(current->namedata, line + 9, n - 10, 0));
+                snippet_init(&current->vstring.name, current->namedata, append(current->namedata, line + 9, n - 10, 0));
 
             }
 
             else if (!memcmp(line, "Version: ", 9))
             {
 
-                snippet_init(&current->version, current->versiondata, append(current->versiondata, line + 9, n - 10, 0));
+                snippet_init(&current->vstring.version, current->versiondata, append(current->versiondata, line + 9, n - 10, 0));
 
             }
 
             else if (!memcmp(line, "Architecture: ", 14))
             {
 
-                snippet_init(&current->arch, current->archdata, append(current->archdata, line + 14, n - 15, 0));
+                snippet_init(&current->vstring.arch, current->archdata, append(current->archdata, line + 14, n - 15, 0));
 
             }
 
@@ -1285,7 +1220,7 @@ static int command_list(int argc, char **argv)
 
                 struct entry *current = &entries[i];
 
-                printentry(stdout, "%A\n", current);
+                printvstringextra(stdout, "%A\n", &current->vstring);
 
             }
 
@@ -1508,13 +1443,13 @@ static int command_rdepends(int argc, char **argv)
                             if (parsevstring(&dependency, fieldbuffer + offset, length))
                             {
 
-                                if (snippet_match(&dependency.name, &entry->name))
+                                if (snippet_match(&dependency.name, &entry->vstring.name))
                                 {
 
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
-                                    if (compareversions(relation, entry->version.data, entry->version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
-                                        printentry(stdout, "%A\n", current);
+                                    if (compareversions(relation, entry->vstring.version.data, entry->vstring.version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
+                                        printvstringextra(stdout, "%A\n", &current->vstring);
 
                                 }
 
@@ -1603,7 +1538,7 @@ static int command_resolve(int argc, char **argv)
             }
 
             for (i = nmatched; i > 0; i--)
-                printentry(stdout, "%A\n", matched[i - 1]);
+                printvstringextra(stdout, "%A\n", &matched[i - 1]->vstring);
 
         }
 
