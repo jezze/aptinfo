@@ -82,8 +82,11 @@ struct entry
 {
 
     char name[64];
+    unsigned int namelength;
     char version[64];
+    unsigned int versionlength;
     char arch[24];
+    unsigned int archlength;
     unsigned int size;
     unsigned int isize;
     char *filename;
@@ -131,7 +134,7 @@ static unsigned int snippet_match(struct snippet *snippet, struct snippet *snipp
 static unsigned int snippet_matchentry(struct snippet *snippet, struct entry *entry)
 {
 
-    return (snippet->length == strlen(entry->name)) && !strncmp(snippet->data, entry->name, snippet->length);
+    return (snippet->length == entry->namelength) && !strncmp(snippet->data, entry->name, snippet->length);
 
 }
 
@@ -531,26 +534,26 @@ static void printentry(FILE *file, char *fmt, struct entry *entry)
             {
 
             case 'n':
-                offset = append(result, entry->name, strlen(entry->name), offset);
+                offset = append(result, entry->name, entry->namelength, offset);
 
                 break;
 
             case 'a':
-                offset = append(result, entry->arch, strlen(entry->arch), offset);
+                offset = append(result, entry->arch, entry->archlength, offset);
 
                 break;
 
             case 'v':
-                offset = append(result, entry->version, strlen(entry->version), offset);
+                offset = append(result, entry->version, entry->versionlength, offset);
 
                 break;
 
             case 'A':
-                offset = append(result, entry->name, strlen(entry->name), offset);
+                offset = append(result, entry->name, entry->namelength, offset);
                 offset = append(result, ":", 1, offset);
-                offset = append(result, entry->arch, strlen(entry->arch), offset);
+                offset = append(result, entry->arch, entry->archlength, offset);
                 offset = append(result, " (= ", 4, offset);
-                offset = append(result, entry->version, strlen(entry->version), offset);
+                offset = append(result, entry->version, entry->versionlength, offset);
                 offset = append(result, ")", 1, offset);
 
                 break;
@@ -930,7 +933,7 @@ static struct entry *findentry(struct vstring *vstring, struct entry *entries, u
         if (snippet_matchentry(&vstring->name, current))
         {
 
-            if (compareversions(relation, current->version, strlen(current->version), vstring->version.data, vstring->version.length) == COMPARE_VALID)
+            if (compareversions(relation, current->version, current->versionlength, vstring->version.data, vstring->version.length) == COMPARE_VALID)
                 return current;
 
         }
@@ -1166,21 +1169,21 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
             else if (!strncmp(line, "Package: ", 9))
             {
 
-                memcpy(current->name, line + 9, n - 10);
+                current->namelength = append(current->name, line + 9, n - 10, 0);
 
             }
 
             else if (!strncmp(line, "Version: ", 9))
             {
 
-                memcpy(current->version, line + 9, n - 10);
+                current->versionlength = append(current->version, line + 9, n - 10, 0);
 
             }
 
             else if (!strncmp(line, "Architecture: ", 14))
             {
 
-                memcpy(current->arch, line + 14, n - 15);
+                current->archlength = append(current->arch, line + 14, n - 15, 0);
 
             }
 
@@ -1517,7 +1520,7 @@ static int command_rdepends(int argc, char **argv)
 
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
-                                    if (compareversions(relation, entry->version, strlen(entry->version), dependency.version.data, dependency.version.length) == COMPARE_VALID)
+                                    if (compareversions(relation, entry->version, entry->versionlength, dependency.version.data, dependency.version.length) == COMPARE_VALID)
                                         printentry(stdout, "%A\n", current);
 
                                 }
