@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "syscall.h"
 
 #define NUM_CMDS                        8
 #define MAX_ENTRIES                     0x20000
-#define FIELDBUFFER_SIZE                0x1000
+#define FIELDBUFFER_SIZE                0x4000
 #define LETTERS_UPSTREAM                "~.+-:"
 #define LETTERS_REVISION                 "~.+"
 
@@ -85,6 +86,7 @@ struct entry
     struct vstring vstring;
     unsigned int size;
     unsigned int isize;
+    unsigned int count;
     char *filename;
     unsigned int offset;
     unsigned int matched;
@@ -107,6 +109,13 @@ static void snippet_init(struct snippet *snippet, char *data, unsigned int lengt
 
 }
 
+static unsigned int snippet_match(struct snippet *snippet, struct snippet *snippet2)
+{
+
+    return (snippet->length == snippet2->length) && !memcmp(snippet->data, snippet2->data, snippet->length);
+
+}
+
 static void vstring_init(struct vstring *vstring, char *data, unsigned int length, struct substring *name, struct substring *arch, struct substring *relation, struct substring *version)
 {
 
@@ -117,10 +126,12 @@ static void vstring_init(struct vstring *vstring, char *data, unsigned int lengt
 
 }
 
-static unsigned int snippet_match(struct snippet *snippet, struct snippet *snippet2)
+static unsigned int append(char *s1, char *s2, unsigned int length, unsigned int offset)
 {
 
-    return (snippet->length == snippet2->length) && !memcmp(snippet->data, snippet2->data, snippet->length);
+    memcpy(s1 + offset, s2, length);
+
+    return offset + length;
 
 }
 
@@ -410,50 +421,20 @@ static unsigned int parsevstring(struct vstring *vstring, char *data, unsigned i
 
 }
 
-static unsigned int readfield(struct entry *entry, char *data, unsigned int count, char *field)
+static unsigned int eachnewline(char *data, unsigned int length, unsigned int offset)
 {
 
-    FILE *fp = fopen(entry->filename, "r");
-    unsigned int length = strlen(field);
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t n;
-    unsigned int ret = 0;
+    unsigned int i;
 
-    if (fp)
+    for (i = offset; i < length; i++)
     {
 
-        fseek(fp, entry->offset, SEEK_SET);
-
-        while ((n = getline(&line, &len, fp)) != -1)
-        {
-
-            if (line[0] == '\n')
-                break;
-
-            if (length < n && line[length] == ':')
-            {
-
-                if (!strncmp(line, field, length))
-                {
-
-                    strcpy(data, line + length + 1);
-
-                    ret = n - length - 1;
-
-                    break;
-
-                }
-
-            }
-
-        }
-
-        fclose(fp);
+        if (data[i] == '\n' || data[i] == '\0')
+            return i + 1 - offset;
 
     }
 
-    return ret;
+    return 0;
 
 }
 
@@ -491,16 +472,57 @@ static unsigned int eachpipe(char *data, unsigned int length, unsigned int offse
 
 }
 
-static unsigned int append(char *s1, char *s2, unsigned int length, unsigned int offset)
+static unsigned int readfield(struct entry *entry, char *data, unsigned int count, char *field)
 {
 
-    memcpy(s1 + offset, s2, length);
+    unsigned int descriptor = syscall_open(entry->filename);
+    unsigned int offset = 0;
 
-    return offset + length;
+    if (descriptor)
+    {
+
+        char buffer[FIELDBUFFER_SIZE];
+        unsigned int count;
+
+        syscall_seek(descriptor, entry->offset);
+
+        count = syscall_read(descriptor, buffer, entry->count);
+
+        if (count)
+        {
+
+            unsigned int length = strlen(field);
+            unsigned int length2;
+            unsigned int offset2;
+
+            for (offset2 = 0; (length2 = eachnewline(buffer, count, offset2)); offset2 += length2)
+            {
+
+                if (length2 == 1 && buffer[offset2] == '\n')
+                    break;
+
+                if (length < length2 && buffer[offset2 + length] == ':' && !memcmp(buffer + offset2, field, length))
+                {
+
+                    offset = append(data, buffer + offset2 + length + 1, length2 - length - 1, offset);
+
+                    break;
+
+                }
+
+            }
+
+        }
+
+        syscall_close(descriptor);
+
+    }
+
+    return offset;
 
 }
 
-static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
+static void printvstring(unsigned int descriptor, char *fmt, struct vstring *vstring)
 {
 
     unsigned int length = strlen(fmt);
@@ -578,28 +600,28 @@ static void printvstringextra(FILE *file, char *fmt, struct vstring *vstring)
 
     offset = append(result, "\0", 1, offset);
 
-    fprintf(file, "%s", result);
+    dprintf(descriptor, "%s", result);
 
 }
 
-static void printvstring(FILE *file, char *fmt, char *data, unsigned int length)
+static void printvstringtext(unsigned int descriptor, char *fmt, char *data, unsigned int length)
 {
 
     struct vstring vstring;
 
     if (parsevstring(&vstring, data, length))
-        printvstringextra(file, fmt, &vstring);
+        printvstring(descriptor, fmt, &vstring);
 
 }
 
-static void printcsv(FILE *file, char *data, unsigned int count)
+static void printcsv(unsigned int descriptor, char *data, unsigned int count)
 {
 
     unsigned int offset;
     unsigned int length;
 
     for (offset = 0; (length = eachcomma(data, count, offset)); offset += length)
-        printvstring(file, "%A\n", data + offset, length);
+        printvstringtext(descriptor, "%A\n", data + offset, length);
 
 }
 
@@ -621,10 +643,10 @@ static unsigned int getrelation(char *relation, unsigned int length)
     case 2:
         if (relation[0] == '<' && relation[1] == '<')
             return RELATION_LT;
-        
+
         if (relation[0] == '<' && relation[1] == '=')
             return RELATION_LTEQ;
- 
+
         if (relation[0] == '>' && relation[1] == '>')
             return RELATION_GT;
 
@@ -1004,19 +1026,19 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (found)
                     continue;
 
-                fprintf(stderr, "WARNING: found no match for [");
+                dprintf(2, "WARNING: found no match for [");
 
                 for (offset2 = 0; (length2 = eachpipe(data, length, offset2)); offset2 += length2)
                 {
 
                     if (offset2)
-                        printvstring(stderr, " | %A", data + offset2, length2);
+                        printvstringtext(2, " | %A", data + offset2, length2);
                     else
-                        printvstring(stderr, "%A", data + offset2, length2);
+                        printvstringtext(2, "%A", data + offset2, length2);
 
                 }
 
-                fprintf(stderr, "]\n");
+                dprintf(2, "]\n");
 
             }
 
@@ -1028,7 +1050,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (child)
                     nmatched = addmatched(child, matched, maxmatched, nmatched);
                 else
-                    printvstring(stderr, "WARNING: found no match for %A\n", data, length);
+                    printvstringtext(2, "WARNING: found no match for %A\n", data, length);
 
             }
 
@@ -1040,97 +1062,115 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
 
 }
 
+static void entry_init(struct entry *current, char *filename, unsigned int offset)
+{
+
+    snippet_init(&current->vstring.name, current->namedata, 0);
+    snippet_init(&current->vstring.version, current->versiondata, 0);
+    snippet_init(&current->vstring.relation, "=", 1);
+    snippet_init(&current->vstring.arch, current->archdata, 0);
+
+    current->filename = filename;
+    current->offset = offset;
+
+}
+
 static unsigned int parsefile(char *filename, struct entry *entries, unsigned int maxentries)
 {
 
-    FILE *fp = fopen(filename, "r");
+    unsigned int descriptor = syscall_open(filename);
 
-    if (fp)
+    if (descriptor)
     {
 
         struct entry *current = &entries[0];
         unsigned int offset = 0;
         unsigned int nentries = 0;
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t n;
+        unsigned int count;
+        char buffer[FIELDBUFFER_SIZE];
 
-        current->filename = filename;
-        current->offset = 0;
+        entry_init(current, filename, 0);
 
-        while ((n = getline(&line, &len, fp)) != -1)
+        while ((count = syscall_read(descriptor, buffer, FIELDBUFFER_SIZE)))
         {
 
-            if (line[0] == '\n')
+            unsigned int length2;
+            unsigned int offset2;
+
+            for (offset2 = 0; (length2 = eachnewline(buffer, count, offset2)); offset2 += length2)
             {
 
-                if (nentries < maxentries)
+                if (length2 == 1 && buffer[offset2] == '\n')
                 {
 
-                    current++;
-                    nentries++;
+                    if (nentries < maxentries)
+                    {
 
-                    snippet_init(&current->vstring.name, current->namedata, 0);
-                    snippet_init(&current->vstring.version, current->versiondata, 0);
-                    snippet_init(&current->vstring.relation, "=", 1);
-                    snippet_init(&current->vstring.arch, current->archdata, 0);
+                        current->count = offset2;
 
-                    current->filename = filename;
-                    current->offset = offset + 1;
+                        current++;
+                        nentries++;
+
+                        offset += offset2 + length2;
+
+                        entry_init(current, filename, offset);
+                        syscall_seek(descriptor, offset);
+
+                        break;
+
+                    }
+
+                    else
+                    {
+
+                        dprintf(2, "WARNING: max number of entries reached (%u)\n", nentries);
+
+                        return nentries;
+
+                    }
 
                 }
 
-                else
+                else if (!memcmp(buffer + offset2, "Package: ", 9))
                 {
 
-                    fprintf(stderr, "WARNING: max number of entries reached (%u)\n", nentries);
+                    snippet_init(&current->vstring.name, current->namedata, append(current->namedata, buffer + offset2 + 9, length2 - 10, 0));
 
-                    return nentries;
+                }
+
+                else if (!memcmp(buffer + offset2, "Version: ", 9))
+                {
+
+                    snippet_init(&current->vstring.version, current->versiondata, append(current->versiondata, buffer + offset2 + 9, length2 - 10, 0));
+
+                }
+
+                else if (!memcmp(buffer + offset2, "Architecture: ", 14))
+                {
+
+                    snippet_init(&current->vstring.arch, current->archdata, append(current->archdata, buffer + offset2 + 14, length2 - 15, 0));
+
+                }
+
+                else if (!memcmp(buffer + offset2, "Size: ", 6))
+                {
+
+                    current->size = tonumerical(buffer + offset2, length2 - 7, 10, 6);
+
+                }
+
+                else if (!memcmp(buffer + offset2, "Installed-Size: ", 16))
+                {
+
+                    current->isize = tonumerical(buffer + offset2, length2 - 17, 10, 16);
 
                 }
 
             }
-
-            else if (!memcmp(line, "Package: ", 9))
-            {
-
-                snippet_init(&current->vstring.name, current->namedata, append(current->namedata, line + 9, n - 10, 0));
-
-            }
-
-            else if (!memcmp(line, "Version: ", 9))
-            {
-
-                snippet_init(&current->vstring.version, current->versiondata, append(current->versiondata, line + 9, n - 10, 0));
-
-            }
-
-            else if (!memcmp(line, "Architecture: ", 14))
-            {
-
-                snippet_init(&current->vstring.arch, current->archdata, append(current->archdata, line + 14, n - 15, 0));
-
-            }
-
-            else if (!memcmp(line, "Size: ", 6))
-            {
-
-                current->size = tonumerical(line, n - 7, 10, 6);
-
-            }
-
-            else if (!memcmp(line, "Installed-Size: ", 16))
-            {
-
-                current->isize = tonumerical(line, n - 17, 10, 16);
-
-            }
-
-            offset += n;
 
         }
 
-        fclose(fp);
+        syscall_close(descriptor);
 
         return nentries;
 
@@ -1176,7 +1216,7 @@ static int command_compare(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: Unknown comparison operator %s\n", argv[1]);
+            dprintf(2, "ERROR: Unknown comparison operator %s\n", argv[1]);
 
             return EXIT_FAILURE;
 
@@ -1217,7 +1257,7 @@ static int command_list(int argc, char **argv)
 
                 struct entry *current = &entries[i];
 
-                printvstringextra(stdout, "%A\n", &current->vstring);
+                printvstring(1, "%A\n", &current->vstring);
 
             }
 
@@ -1226,7 +1266,7 @@ static int command_list(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1271,14 +1311,14 @@ static int command_depends(int argc, char **argv)
                     char fieldbuffer[FIELDBUFFER_SIZE];
                     unsigned int count = readfield(entry, fieldbuffer, FIELDBUFFER_SIZE, "Depends");
 
-                    printcsv(stdout, fieldbuffer, count);
+                    printcsv(1, fieldbuffer, count);
 
                 }
 
                 else
                 {
 
-                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1291,7 +1331,7 @@ static int command_depends(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1333,31 +1373,37 @@ static int command_raw(int argc, char **argv)
                 if (entry)
                 {
 
-                    FILE *fp = fopen(entry->filename, "r");
+                    unsigned int descriptor = syscall_open(entry->filename);
 
-                    if (fp)
+                    if (descriptor)
                     {
 
-                        char *line = NULL;
-                        size_t len = 0;
-                        ssize_t n;
+                        char buffer[FIELDBUFFER_SIZE];
+                        unsigned int count;
 
-                        fseek(fp, entry->offset, SEEK_SET);
+                        syscall_seek(descriptor, entry->offset);
 
-                        if (offset)
-                            printf("\n");
+                        count = syscall_read(descriptor, buffer, entry->count);
 
-                        while ((n = getline(&line, &len, fp)) != -1)
+                        if (count)
                         {
 
-                            if (line[0] == '\n')
-                                break;
+                            unsigned int length2;
+                            unsigned int offset2;
 
-                            printf("%s", line);
+                            for (offset2 = 0; (length2 = eachnewline(buffer, count, offset2)); offset2 += length2)
+                            {
+
+                                if (length2 == 1 && buffer[offset2] == '\n')
+                                    break;
+
+                                printf("%.*s", length2, buffer + offset2);
+
+                            }
 
                         }
 
-                        fclose(fp);
+                        syscall_close(descriptor);
 
                     }
 
@@ -1366,7 +1412,7 @@ static int command_raw(int argc, char **argv)
                 else
                 {
 
-                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1379,7 +1425,7 @@ static int command_raw(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1446,7 +1492,7 @@ static int command_rdepends(int argc, char **argv)
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
                                     if (compareversions(relation, entry->vstring.version.data, entry->vstring.version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
-                                        printvstringextra(stdout, "%A\n", &current->vstring);
+                                        printvstring(1, "%A\n", &current->vstring);
 
                                 }
 
@@ -1461,7 +1507,7 @@ static int command_rdepends(int argc, char **argv)
                 else
                 {
 
-                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1474,7 +1520,7 @@ static int command_rdepends(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1526,7 +1572,7 @@ static int command_resolve(int argc, char **argv)
                 else
                 {
 
-                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1535,14 +1581,14 @@ static int command_resolve(int argc, char **argv)
             }
 
             for (i = nmatched; i > 0; i--)
-                printvstringextra(stdout, "%A\n", &matched[i - 1]->vstring);
+                printvstring(1, "%A\n", &matched[i - 1]->vstring);
 
         }
 
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1599,8 +1645,8 @@ static int command_show(int argc, char **argv)
                     if (count)
                     {
 
-                        fprintf(stdout, "# %s:\n", fields[i]);
-                        printcsv(stdout, fieldbuffer, count);
+                        dprintf(1, "# %s:\n", fields[i]);
+                        printcsv(1, fieldbuffer, count);
 
                     }
 
@@ -1612,7 +1658,7 @@ static int command_show(int argc, char **argv)
             else
             {
 
-                printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
+                printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
 
                 return EXIT_FAILURE;
 
@@ -1623,7 +1669,7 @@ static int command_show(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1675,7 +1721,7 @@ static int command_size(int argc, char **argv)
                 else
                 {
 
-                    printvstring(stderr, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1691,7 +1737,7 @@ static int command_size(int argc, char **argv)
         else
         {
 
-            fprintf(stderr, "ERROR: No entries found in package file(s)\n");
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1757,7 +1803,7 @@ int main(int argc, char **argv)
 
         }
 
-        fprintf(stderr, "ERROR: Unknown command %s\n", argv[1]);
+        dprintf(2, "ERROR: Unknown command %s\n", argv[1]);
 
         return EXIT_FAILURE;
 
