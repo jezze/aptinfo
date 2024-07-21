@@ -81,12 +81,12 @@ struct command
 struct entry
 {
 
-    char name[64];
-    unsigned int namelength;
-    char version[64];
-    unsigned int versionlength;
-    char arch[24];
-    unsigned int archlength;
+    char namedata[64];
+    struct snippet name;
+    char versiondata[64];
+    struct snippet version;
+    char archdata[24];
+    struct snippet arch;
     unsigned int size;
     unsigned int isize;
     char *filename;
@@ -127,14 +127,7 @@ static void vstring_init(struct vstring *vstring, char *data, unsigned int lengt
 static unsigned int snippet_match(struct snippet *snippet, struct snippet *snippet2)
 {
 
-    return (snippet->length == snippet2->length) && !strncmp(snippet->data, snippet2->data, snippet->length);
-
-}
-
-static unsigned int snippet_matchentry(struct snippet *snippet, struct entry *entry)
-{
-
-    return (snippet->length == entry->namelength) && !strncmp(snippet->data, entry->name, snippet->length);
+    return (snippet->length == snippet2->length) && !memcmp(snippet->data, snippet2->data, snippet->length);
 
 }
 
@@ -534,26 +527,26 @@ static void printentry(FILE *file, char *fmt, struct entry *entry)
             {
 
             case 'n':
-                offset = append(result, entry->name, entry->namelength, offset);
+                offset = append(result, entry->name.data, entry->name.length, offset);
 
                 break;
 
             case 'a':
-                offset = append(result, entry->arch, entry->archlength, offset);
+                offset = append(result, entry->arch.data, entry->arch.length, offset);
 
                 break;
 
             case 'v':
-                offset = append(result, entry->version, entry->versionlength, offset);
+                offset = append(result, entry->version.data, entry->version.length, offset);
 
                 break;
 
             case 'A':
-                offset = append(result, entry->name, entry->namelength, offset);
+                offset = append(result, entry->name.data, entry->name.length, offset);
                 offset = append(result, ":", 1, offset);
-                offset = append(result, entry->arch, entry->archlength, offset);
+                offset = append(result, entry->arch.data, entry->arch.length, offset);
                 offset = append(result, " (= ", 4, offset);
-                offset = append(result, entry->version, entry->versionlength, offset);
+                offset = append(result, entry->version.data, entry->version.length, offset);
                 offset = append(result, ")", 1, offset);
 
                 break;
@@ -930,10 +923,10 @@ static struct entry *findentry(struct vstring *vstring, struct entry *entries, u
 
         struct entry *current = &entries[i];
 
-        if (snippet_matchentry(&vstring->name, current))
+        if (snippet_match(&vstring->name, &current->name))
         {
 
-            if (compareversions(relation, current->version, current->versionlength, vstring->version.data, vstring->version.length) == COMPARE_VALID)
+            if (compareversions(relation, current->version.data, current->version.length, vstring->version.data, vstring->version.length) == COMPARE_VALID)
                 return current;
 
         }
@@ -1166,35 +1159,35 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
 
             }
 
-            else if (!strncmp(line, "Package: ", 9))
+            else if (!memcmp(line, "Package: ", 9))
             {
 
-                current->namelength = append(current->name, line + 9, n - 10, 0);
+                snippet_init(&current->name, current->namedata, append(current->namedata, line + 9, n - 10, 0));
 
             }
 
-            else if (!strncmp(line, "Version: ", 9))
+            else if (!memcmp(line, "Version: ", 9))
             {
 
-                current->versionlength = append(current->version, line + 9, n - 10, 0);
+                snippet_init(&current->version, current->versiondata, append(current->versiondata, line + 9, n - 10, 0));
 
             }
 
-            else if (!strncmp(line, "Architecture: ", 14))
+            else if (!memcmp(line, "Architecture: ", 14))
             {
 
-                current->archlength = append(current->arch, line + 14, n - 15, 0);
+                snippet_init(&current->arch, current->archdata, append(current->archdata, line + 14, n - 15, 0));
 
             }
 
-            else if (!strncmp(line, "Size: ", 6))
+            else if (!memcmp(line, "Size: ", 6))
             {
 
                 current->size = tonumerical(line + 6, n - 7, 10, 0);
 
             }
 
-            else if (!strncmp(line, "Installed-Size: ", 16))
+            else if (!memcmp(line, "Installed-Size: ", 16))
             {
 
                 current->isize = tonumerical(line + 16, n - 17, 10, 0);
@@ -1515,12 +1508,12 @@ static int command_rdepends(int argc, char **argv)
                             if (parsevstring(&dependency, fieldbuffer + offset, length))
                             {
 
-                                if (snippet_matchentry(&dependency.name, entry))
+                                if (snippet_match(&dependency.name, &entry->name))
                                 {
 
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
-                                    if (compareversions(relation, entry->version, entry->versionlength, dependency.version.data, dependency.version.length) == COMPARE_VALID)
+                                    if (compareversions(relation, entry->version.data, entry->version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
                                         printentry(stdout, "%A\n", current);
 
                                 }
