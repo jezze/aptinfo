@@ -700,10 +700,7 @@ static int comparenumerical(char *data1, unsigned int offset1, unsigned int leng
     unsigned int n1 = tonumerical(data1, length1, 10, offset1);
     unsigned int n2 = tonumerical(data2, length2, 10, offset2);
 
-    if (n1 != n2)
-        return n1 - n2;
-
-    return 0;
+    return n1 - n2;
 
 }
 
