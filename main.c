@@ -82,10 +82,10 @@ struct entry
 {
 
     char namedata[64];
-    struct snippet name;
     char versiondata[64];
-    struct snippet version;
     char archdata[24];
+    struct snippet name;
+    struct snippet version;
     struct snippet arch;
     unsigned int size;
     unsigned int isize;
