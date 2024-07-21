@@ -20,9 +20,9 @@ debug: ${BIN}
 
 ${BIN}: ${OBJS}
 	@echo LD $@
-	@${LD} ${LDFLAGS} -o $@ $<
+	@${LD} ${LDFLAGS} -o $@ $^
 
-install: ${BIN}
+install:
 	${CP} ${BIN} ${PREFIX}/bin/${BIN}
 
 clean:
