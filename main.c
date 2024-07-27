@@ -475,18 +475,18 @@ static unsigned int eachpipe(char *data, unsigned int length, unsigned int offse
 static unsigned int readfield(struct entry *entry, char *data, unsigned int count, char *field)
 {
 
-    unsigned int descriptor = syscall_open(entry->filename);
+    unsigned int fd = syscall_open(entry->filename);
     unsigned int offset = 0;
 
-    if (descriptor)
+    if (fd)
     {
 
         char buffer[FIELDBUFFER_SIZE];
         unsigned int count;
 
-        syscall_seek(descriptor, entry->offset);
+        syscall_seek(fd, entry->offset);
 
-        count = syscall_read(descriptor, buffer, entry->count);
+        count = syscall_read(fd, buffer, entry->count);
 
         if (count)
         {
@@ -514,7 +514,7 @@ static unsigned int readfield(struct entry *entry, char *data, unsigned int coun
 
         }
 
-        syscall_close(descriptor);
+        syscall_close(fd);
 
     }
 
@@ -522,7 +522,7 @@ static unsigned int readfield(struct entry *entry, char *data, unsigned int coun
 
 }
 
-static void printvstring(unsigned int descriptor, char *fmt, struct vstring *vstring)
+static void printvstring(unsigned int fd, char *fmt, struct vstring *vstring)
 {
 
     unsigned int length = strlen(fmt);
@@ -600,28 +600,35 @@ static void printvstring(unsigned int descriptor, char *fmt, struct vstring *vst
 
     offset = append(result, "\0", 1, offset);
 
-    dprintf(descriptor, "%s", result);
+    dprintf(fd, "%s", result);
 
 }
 
-static void printvstringtext(unsigned int descriptor, char *fmt, char *data, unsigned int length)
+static void printvstringtext(unsigned int fd, char *fmt, char *data, unsigned int length)
 {
 
     struct vstring vstring;
 
     if (parsevstring(&vstring, data, length))
-        printvstring(descriptor, fmt, &vstring);
+        printvstring(fd, fmt, &vstring);
 
 }
 
-static void printcsv(unsigned int descriptor, char *data, unsigned int count)
+static void printcsv(unsigned int fd, char *data, unsigned int count)
 {
 
     unsigned int offset;
     unsigned int length;
 
     for (offset = 0; (length = eachcomma(data, count, offset)); offset += length)
-        printvstringtext(descriptor, "%A\n", data + offset, length);
+    {
+
+        struct vstring vstring;
+
+        if (parsevstring(&vstring, data + offset, length))
+            printvstring(fd, "%A\n", &vstring);
+
+    }
 
 }
 
@@ -1031,10 +1038,10 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 for (offset2 = 0; (length2 = eachpipe(data, length, offset2)); offset2 += length2)
                 {
 
-                    if (offset2)
-                        printvstringtext(SYSCALL_STDERR, " | %A", data + offset2, length2);
-                    else
-                        printvstringtext(SYSCALL_STDERR, "%A", data + offset2, length2);
+                    struct vstring vstring;
+
+                    if (parsevstring(&vstring, data + offset2, length2))
+                        printvstring(SYSCALL_STDERR, offset2 ? " | %A" : "%A", &vstring);
 
                 }
 
@@ -1078,9 +1085,9 @@ static void entry_init(struct entry *current, char *filename, unsigned int offse
 static unsigned int parsefile(char *filename, struct entry *entries, unsigned int maxentries)
 {
 
-    unsigned int descriptor = syscall_open(filename);
+    unsigned int fd = syscall_open(filename);
 
-    if (descriptor)
+    if (fd)
     {
 
         struct entry *current = &entries[0];
@@ -1091,7 +1098,7 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
 
         entry_init(current, filename, 0);
 
-        while ((count = syscall_read(descriptor, buffer, FIELDBUFFER_SIZE)))
+        while ((count = syscall_read(fd, buffer, FIELDBUFFER_SIZE)))
         {
 
             unsigned int length2;
@@ -1114,7 +1121,7 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
                         offset += offset2 + length2;
 
                         entry_init(current, filename, offset);
-                        syscall_seek(descriptor, offset);
+                        syscall_seek(fd, offset);
 
                         break;
 
@@ -1170,7 +1177,7 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
 
         }
 
-        syscall_close(descriptor);
+        syscall_close(fd);
 
         return nentries;
 
@@ -1209,7 +1216,7 @@ static int command_compare(int argc, char **argv)
 
             unsigned int valid = compareversions(relation, argv[0], strlen(argv[0]), argv[2], strlen(argv[2]));
 
-            printf("%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid == COMPARE_VALID ? "OK" : "NOT OK");
+            dprintf(SYSCALL_STDOUT, "%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid == COMPARE_VALID ? "OK" : "NOT OK");
 
         }
 
@@ -1227,11 +1234,11 @@ static int command_compare(int argc, char **argv)
     else
     {
 
-        printf("compare <v1> <op> <v2>\n\n");
-        printf("Compare the two debian version strings <v1> and <v2> using the comparison operator <op>\n");
-        printf("  v1: [epoch:]upstream-version[-debian-revision]\n");
-        printf("  v2: [epoch:]upstream-version[-debian-revision]\n");
-        printf("  op: One of =, <<, >>, <=, >=\n");
+        dprintf(SYSCALL_STDOUT, "compare <v1> <op> <v2>\n\n");
+        dprintf(SYSCALL_STDOUT, "Compare the two debian version strings <v1> and <v2> using the comparison operator <op>\n");
+        dprintf(SYSCALL_STDOUT, "  v1: [epoch:]upstream-version[-debian-revision]\n");
+        dprintf(SYSCALL_STDOUT, "  v2: [epoch:]upstream-version[-debian-revision]\n");
+        dprintf(SYSCALL_STDOUT, "  op: One of =, <<, >>, <=, >=\n");
 
     }
 
@@ -1295,8 +1302,8 @@ static int command_depends(int argc, char **argv)
     else
     {
 
-        printf("depends <package-expression> <index-file>...\n\n");
-        printf("Show dependencies of packages that matches the package expression\n");
+        dprintf(SYSCALL_STDOUT, "depends <package-expression> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Show dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1342,8 +1349,8 @@ static int command_list(int argc, char **argv)
     else
     {
 
-        printf("list <index-file>...\n\n");
-        printf("List all packages\n");
+        dprintf(SYSCALL_STDOUT, "list <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "List all packages\n");
 
     }
 
@@ -1373,17 +1380,17 @@ static int command_raw(int argc, char **argv)
                 if (entry)
                 {
 
-                    unsigned int descriptor = syscall_open(entry->filename);
+                    unsigned int fd = syscall_open(entry->filename);
 
-                    if (descriptor)
+                    if (fd)
                     {
 
                         char buffer[FIELDBUFFER_SIZE];
                         unsigned int count;
 
-                        syscall_seek(descriptor, entry->offset);
+                        syscall_seek(fd, entry->offset);
 
-                        count = syscall_read(descriptor, buffer, entry->count);
+                        count = syscall_read(fd, buffer, entry->count);
 
                         if (count)
                         {
@@ -1397,13 +1404,13 @@ static int command_raw(int argc, char **argv)
                                 if (length2 == 1 && buffer[offset2] == '\n')
                                     break;
 
-                                printf("%.*s", length2, buffer + offset2);
+                                dprintf(SYSCALL_STDOUT, "%.*s", length2, buffer + offset2);
 
                             }
 
                         }
 
-                        syscall_close(descriptor);
+                        syscall_close(fd);
 
                     }
 
@@ -1436,8 +1443,8 @@ static int command_raw(int argc, char **argv)
     else
     {
 
-        printf("raw <package-expression> <index-file>...\n\n");
-        printf("Show raw data of packages that matches the package expression\n");
+        dprintf(SYSCALL_STDOUT, "raw <package-expression> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Show raw data of packages that matches the package expression\n");
 
     }
 
@@ -1531,8 +1538,8 @@ static int command_rdepends(int argc, char **argv)
     else
     {
 
-        printf("rdepends <package-expression> <index-file>...\n\n");
-        printf("Show packages having dependencies that matches the package expression\n");
+        dprintf(SYSCALL_STDOUT, "rdepends <package-expression> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Show packages having dependencies that matches the package expression\n");
 
 
     }
@@ -1599,8 +1606,8 @@ static int command_resolve(int argc, char **argv)
     else
     {
 
-        printf("resolve <package-expression> <index-file>...\n\n");
-        printf("Recursively resolve all dependencies of packages that matches the package expression\n");
+        dprintf(SYSCALL_STDOUT, "resolve <package-expression> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Recursively resolve all dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1680,8 +1687,8 @@ static int command_show(int argc, char **argv)
     else
     {
 
-        printf("show <package> <index-file>...\n\n");
-        printf("Show information about a package\n");
+        dprintf(SYSCALL_STDOUT, "show <package> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Show information about a package\n");
 
     }
 
@@ -1729,8 +1736,8 @@ static int command_size(int argc, char **argv)
 
             }
 
-            printf("Size: %u\n", size);
-            printf("Installed-Size: %u\n", isize);
+            dprintf(SYSCALL_STDOUT, "Size: %u\n", size);
+            dprintf(SYSCALL_STDOUT, "Installed-Size: %u\n", isize);
 
         }
 
@@ -1748,8 +1755,8 @@ static int command_size(int argc, char **argv)
     else
     {
 
-        printf("size <package-expression> <index-file>...\n\n");
-        printf("Show the total size of packages that matches the package expression\n");
+        dprintf(SYSCALL_STDOUT, "size <package-expression> <index-file>...\n\n");
+        dprintf(SYSCALL_STDOUT, "Show the total size of packages that matches the package expression\n");
 
     }
 
@@ -1776,15 +1783,15 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
 
-        printf("aptinfo <command> [<args>]\n\n");
-        printf("commands:\n");
+        dprintf(SYSCALL_STDOUT, "aptinfo <command> [<args>]\n\n");
+        dprintf(SYSCALL_STDOUT, "commands:\n");
 
         for (i = 0; i < NUM_CMDS; i++)
         {
 
             struct command *command = &commands[i];
 
-            printf("  %s\n", command->name);
+            dprintf(SYSCALL_STDOUT, "  %s\n", command->name);
 
         }
 

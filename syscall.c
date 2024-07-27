@@ -1,16 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "syscall.h"
 
-unsigned int syscall_read(unsigned int descriptor, void *buffer, unsigned int count)
+enum
 {
 
-    int ret = syscall(0, descriptor, buffer, count);
+    SYSCALL_READ = 0,
+    SYSCALL_WRITE = 1,
+    SYSCALL_OPEN = 2,
+    SYSCALL_CLOSE = 3,
+    SYSCALL_SEEK = 8
+
+};
+
+unsigned int syscall_read(unsigned int fd, void *buffer, unsigned int count)
+{
+
+    int ret = syscall(SYSCALL_READ, fd, buffer, count);
 
     if (ret < 0)
     {
 
-        dprintf(2, "Read syscall failed (%d)\n", ret);
+        dprintf(SYSCALL_STDERR, "Read syscall failed (%d)\n", ret);
+        exit(EXIT_FAILURE);
+
+    }
+
+    return ret;
+
+}
+
+unsigned int syscall_write(unsigned int fd, void *buffer, unsigned int count)
+{
+
+    int ret = syscall(SYSCALL_WRITE, fd, buffer, count);
+
+    if (ret < 0)
+    {
+
+        dprintf(SYSCALL_STDERR, "Write syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -22,12 +51,12 @@ unsigned int syscall_read(unsigned int descriptor, void *buffer, unsigned int co
 unsigned int syscall_open(char *path)
 {
 
-    int ret = syscall(2, path, 0);
+    int ret = syscall(SYSCALL_OPEN, path, 0);
 
     if (ret < 0)
     {
 
-        dprintf(2, "Open syscall failed (%d)\n", ret);
+        dprintf(SYSCALL_STDERR, "Open syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -36,30 +65,30 @@ unsigned int syscall_open(char *path)
 
 }
 
-void syscall_close(unsigned int descriptor)
+void syscall_close(unsigned int fd)
 {
 
-    int ret = syscall(3, descriptor);
+    int ret = syscall(SYSCALL_CLOSE, fd);
 
     if (ret < 0)
     {
 
-        dprintf(2, "Close syscall failed (%d)\n", ret);
+        dprintf(SYSCALL_STDERR, "Close syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
 
 }
 
-void syscall_seek(unsigned int descriptor, unsigned int offset)
+void syscall_seek(unsigned int fd, unsigned int offset)
 {
 
-    int ret = syscall(8, descriptor, offset, 0);
+    int ret = syscall(SYSCALL_SEEK, fd, offset, 0);
 
     if (ret < 0)
     {
 
-        dprintf(2, "Seek syscall failed (%d)\n", ret);
+        dprintf(SYSCALL_STDERR, "Seek syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
