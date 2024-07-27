@@ -1186,7 +1186,7 @@ static unsigned int parsefiles(int argc, char **argv, struct entry *entries, uns
     unsigned int nentries = 0;
     unsigned int i;
 
-    for (i = 0; i < argc; i++)
+    for (i = argc - 1; i < argc; i++)
         nentries += parsefile(argv[i], entries + nentries, maxentries - nentries);
 
     return nentries;
@@ -1245,7 +1245,7 @@ static int command_list(int argc, char **argv)
     if (argc >= 1)
     {
 
-        unsigned int nentries = parsefiles(argc, &argv[0], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1292,7 +1292,7 @@ static int command_depends(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1357,7 +1357,7 @@ static int command_raw(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1451,7 +1451,7 @@ static int command_rdepends(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1547,7 +1547,7 @@ static int command_resolve(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1614,7 +1614,7 @@ static int command_show(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {
@@ -1695,7 +1695,7 @@ static int command_size(int argc, char **argv)
     if (argc >= 2)
     {
 
-        unsigned int nentries = parsefiles(argc - 1, &argv[1], entries, MAX_ENTRIES);
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
 
         if (nentries)
         {

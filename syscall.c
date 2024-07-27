@@ -27,7 +27,7 @@ unsigned int syscall_open(char *path)
     if (ret < 0)
     {
 
-        dprintf(2, "Read syscall failed (%d)\n", ret);
+        dprintf(2, "Open syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
