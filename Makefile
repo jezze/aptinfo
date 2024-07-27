@@ -1,5 +1,5 @@
 BIN=aptinfo
-OBJS=main.o syscall.o
+OBJS=main.o sys.o
 PREFIX=/usr/local
 CC=gcc
 CFLAGS=-pedantic -Wall -c
