@@ -1033,7 +1033,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (found)
                     continue;
 
-                dprintf(SYS_STDERR, "WARNING: found no match for [");
+                dprintf(SYS_FD_STDERR, "WARNING: found no match for [");
 
                 for (offset2 = 0; (length2 = eachpipe(data, length, offset2)); offset2 += length2)
                 {
@@ -1041,11 +1041,11 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                     struct vstring vstring;
 
                     if (parsevstring(&vstring, data + offset2, length2))
-                        printvstring(SYS_STDERR, offset2 ? " | %A" : "%A", &vstring);
+                        printvstring(SYS_FD_STDERR, offset2 ? " | %A" : "%A", &vstring);
 
                 }
 
-                dprintf(SYS_STDERR, "]\n");
+                dprintf(SYS_FD_STDERR, "]\n");
 
             }
 
@@ -1057,7 +1057,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (child)
                     nmatched = addmatched(child, matched, maxmatched, nmatched);
                 else
-                    printvstringtext(SYS_STDERR, "WARNING: found no match for %A\n", data, length);
+                    printvstringtext(SYS_FD_STDERR, "WARNING: found no match for %A\n", data, length);
 
             }
 
@@ -1130,7 +1130,7 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
                     else
                     {
 
-                        dprintf(SYS_STDERR, "WARNING: max number of entries reached (%u)\n", nentries);
+                        dprintf(SYS_FD_STDERR, "WARNING: max number of entries reached (%u)\n", nentries);
 
                         return nentries;
 
@@ -1216,14 +1216,14 @@ static int command_compare(int argc, char **argv)
 
             unsigned int valid = compareversions(relation, argv[0], strlen(argv[0]), argv[2], strlen(argv[2]));
 
-            dprintf(SYS_STDOUT, "%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid == COMPARE_VALID ? "OK" : "NOT OK");
+            dprintf(SYS_FD_STDOUT, "%s %s %s [%s]\n", argv[0], argv[1], argv[2], valid == COMPARE_VALID ? "OK" : "NOT OK");
 
         }
 
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: Unknown comparison operator %s\n", argv[1]);
+            dprintf(SYS_FD_STDERR, "ERROR: Unknown comparison operator %s\n", argv[1]);
 
             return EXIT_FAILURE;
 
@@ -1234,11 +1234,11 @@ static int command_compare(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "compare <v1> <op> <v2>\n\n");
-        dprintf(SYS_STDOUT, "Compare the two debian version strings <v1> and <v2> using the comparison operator <op>\n");
-        dprintf(SYS_STDOUT, "  v1: [epoch:]upstream-version[-debian-revision]\n");
-        dprintf(SYS_STDOUT, "  v2: [epoch:]upstream-version[-debian-revision]\n");
-        dprintf(SYS_STDOUT, "  op: One of =, <<, >>, <=, >=\n");
+        dprintf(SYS_FD_STDOUT, "compare <v1> <op> <v2>\n\n");
+        dprintf(SYS_FD_STDOUT, "Compare the two debian version strings <v1> and <v2> using the comparison operator <op>\n");
+        dprintf(SYS_FD_STDOUT, "  v1: [epoch:]upstream-version[-debian-revision]\n");
+        dprintf(SYS_FD_STDOUT, "  v2: [epoch:]upstream-version[-debian-revision]\n");
+        dprintf(SYS_FD_STDOUT, "  op: One of =, <<, >>, <=, >=\n");
 
     }
 
@@ -1271,14 +1271,14 @@ static int command_depends(int argc, char **argv)
                     char fieldbuffer[FIELDBUFFER_SIZE];
                     unsigned int count = readfield(entry, fieldbuffer, FIELDBUFFER_SIZE, "Depends");
 
-                    printcsv(SYS_STDOUT, fieldbuffer, count);
+                    printcsv(SYS_FD_STDOUT, fieldbuffer, count);
 
                 }
 
                 else
                 {
 
-                    printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1291,7 +1291,7 @@ static int command_depends(int argc, char **argv)
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1302,8 +1302,8 @@ static int command_depends(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "depends <package-expression> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Show dependencies of packages that matches the package expression\n");
+        dprintf(SYS_FD_STDOUT, "depends <package-expression> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Show dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1329,7 +1329,7 @@ static int command_list(int argc, char **argv)
 
                 struct entry *current = &entries[i];
 
-                printvstring(SYS_STDOUT, "%A\n", &current->vstring);
+                printvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
 
             }
 
@@ -1338,7 +1338,7 @@ static int command_list(int argc, char **argv)
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1349,8 +1349,8 @@ static int command_list(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "list <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "List all packages\n");
+        dprintf(SYS_FD_STDOUT, "list <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "List all packages\n");
 
     }
 
@@ -1404,7 +1404,7 @@ static int command_raw(int argc, char **argv)
                                 if (length2 == 1 && buffer[offset2] == '\n')
                                     break;
 
-                                dprintf(SYS_STDOUT, "%.*s", length2, buffer + offset2);
+                                dprintf(SYS_FD_STDOUT, "%.*s", length2, buffer + offset2);
 
                             }
 
@@ -1419,7 +1419,7 @@ static int command_raw(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1432,7 +1432,7 @@ static int command_raw(int argc, char **argv)
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1443,8 +1443,8 @@ static int command_raw(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "raw <package-expression> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Show raw data of packages that matches the package expression\n");
+        dprintf(SYS_FD_STDOUT, "raw <package-expression> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Show raw data of packages that matches the package expression\n");
 
     }
 
@@ -1499,7 +1499,7 @@ static int command_rdepends(int argc, char **argv)
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
                                     if (compareversions(relation, entry->vstring.version.data, entry->vstring.version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
-                                        printvstring(SYS_STDOUT, "%A\n", &current->vstring);
+                                        printvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
 
                                 }
 
@@ -1514,7 +1514,7 @@ static int command_rdepends(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1527,7 +1527,7 @@ static int command_rdepends(int argc, char **argv)
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1538,8 +1538,8 @@ static int command_rdepends(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "rdepends <package-expression> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Show packages having dependencies that matches the package expression\n");
+        dprintf(SYS_FD_STDOUT, "rdepends <package-expression> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Show packages having dependencies that matches the package expression\n");
 
 
     }
@@ -1579,7 +1579,7 @@ static int command_resolve(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1588,14 +1588,14 @@ static int command_resolve(int argc, char **argv)
             }
 
             for (i = nmatched; i > 0; i--)
-                printvstring(SYS_STDOUT, "%A\n", &matched[i - 1]->vstring);
+                printvstring(SYS_FD_STDOUT, "%A\n", &matched[i - 1]->vstring);
 
         }
 
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1606,8 +1606,8 @@ static int command_resolve(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "resolve <package-expression> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Recursively resolve all dependencies of packages that matches the package expression\n");
+        dprintf(SYS_FD_STDOUT, "resolve <package-expression> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Recursively resolve all dependencies of packages that matches the package expression\n");
 
     }
 
@@ -1652,8 +1652,8 @@ static int command_show(int argc, char **argv)
                     if (count)
                     {
 
-                        dprintf(SYS_STDOUT, "# %s:\n", fields[i]);
-                        printcsv(SYS_STDOUT, fieldbuffer, count);
+                        dprintf(SYS_FD_STDOUT, "# %s:\n", fields[i]);
+                        printcsv(SYS_FD_STDOUT, fieldbuffer, count);
 
                     }
 
@@ -1665,7 +1665,7 @@ static int command_show(int argc, char **argv)
             else
             {
 
-                printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
+                printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
 
                 return EXIT_FAILURE;
 
@@ -1676,7 +1676,7 @@ static int command_show(int argc, char **argv)
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1687,8 +1687,8 @@ static int command_show(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "show <package> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Show information about a package\n");
+        dprintf(SYS_FD_STDOUT, "show <package> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Show information about a package\n");
 
     }
 
@@ -1728,7 +1728,7 @@ static int command_size(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1736,15 +1736,15 @@ static int command_size(int argc, char **argv)
 
             }
 
-            dprintf(SYS_STDOUT, "Size: %u\n", size);
-            dprintf(SYS_STDOUT, "Installed-Size: %u\n", isize);
+            dprintf(SYS_FD_STDOUT, "Size: %u\n", size);
+            dprintf(SYS_FD_STDOUT, "Installed-Size: %u\n", isize);
 
         }
 
         else
         {
 
-            dprintf(SYS_STDERR, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYS_FD_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1755,8 +1755,8 @@ static int command_size(int argc, char **argv)
     else
     {
 
-        dprintf(SYS_STDOUT, "size <package-expression> <index-file>...\n\n");
-        dprintf(SYS_STDOUT, "Show the total size of packages that matches the package expression\n");
+        dprintf(SYS_FD_STDOUT, "size <package-expression> <index-file>...\n\n");
+        dprintf(SYS_FD_STDOUT, "Show the total size of packages that matches the package expression\n");
 
     }
 
@@ -1783,15 +1783,15 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
 
-        dprintf(SYS_STDOUT, "aptinfo <command> [<args>]\n\n");
-        dprintf(SYS_STDOUT, "commands:\n");
+        dprintf(SYS_FD_STDOUT, "aptinfo <command> [<args>]\n\n");
+        dprintf(SYS_FD_STDOUT, "commands:\n");
 
         for (i = 0; i < NUM_CMDS; i++)
         {
 
             struct command *command = &commands[i];
 
-            dprintf(SYS_STDOUT, "  %s\n", command->name);
+            dprintf(SYS_FD_STDOUT, "  %s\n", command->name);
 
         }
 
@@ -1810,7 +1810,7 @@ int main(int argc, char **argv)
 
         }
 
-        dprintf(SYS_STDERR, "ERROR: Unknown command %s\n", argv[1]);
+        dprintf(SYS_FD_STDERR, "ERROR: Unknown command %s\n", argv[1]);
 
         return EXIT_FAILURE;
 

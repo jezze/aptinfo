@@ -22,7 +22,7 @@ unsigned int sys_read(unsigned int fd, void *buffer, unsigned int count)
     if (ret < 0)
     {
 
-        dprintf(SYS_STDERR, "Read syscall failed (%d)\n", ret);
+        dprintf(SYS_FD_STDERR, "Read syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -39,7 +39,7 @@ unsigned int sys_write(unsigned int fd, void *buffer, unsigned int count)
     if (ret < 0)
     {
 
-        dprintf(SYS_STDERR, "Write syscall failed (%d)\n", ret);
+        dprintf(SYS_FD_STDERR, "Write syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -56,7 +56,7 @@ unsigned int sys_open(char *path)
     if (ret < 0)
     {
 
-        dprintf(SYS_STDERR, "Open syscall failed (%d)\n", ret);
+        dprintf(SYS_FD_STDERR, "Open syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -73,7 +73,7 @@ void sys_close(unsigned int fd)
     if (ret < 0)
     {
 
-        dprintf(SYS_STDERR, "Close syscall failed (%d)\n", ret);
+        dprintf(SYS_FD_STDERR, "Close syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }
@@ -88,7 +88,7 @@ void sys_seek(unsigned int fd, unsigned int offset)
     if (ret < 0)
     {
 
-        dprintf(SYS_STDERR, "Seek syscall failed (%d)\n", ret);
+        dprintf(SYS_FD_STDERR, "Seek syscall failed (%d)\n", ret);
         exit(EXIT_FAILURE);
 
     }

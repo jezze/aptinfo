@@ -1,6 +1,11 @@
-#define SYS_STDIN 0
-#define SYS_STDOUT 1
-#define SYS_STDERR 2
+enum
+{
+
+    SYS_FD_STDIN = 0,
+    SYS_FD_STDOUT = 1,
+    SYS_FD_STDERR = 2
+
+};
 
 unsigned int sys_read(unsigned int fd, void *buffer, unsigned int count);
 unsigned int sys_write(unsigned int fd, void *buffer, unsigned int count);
