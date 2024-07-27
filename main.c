@@ -522,7 +522,7 @@ static unsigned int readfield(struct entry *entry, char *data, unsigned int coun
 
 }
 
-static void printvstring(unsigned int fd, char *fmt, struct vstring *vstring)
+static void dprintvstring(unsigned int fd, char *fmt, struct vstring *vstring)
 {
 
     unsigned int length = strlen(fmt);
@@ -604,17 +604,7 @@ static void printvstring(unsigned int fd, char *fmt, struct vstring *vstring)
 
 }
 
-static void printvstringtext(unsigned int fd, char *fmt, char *data, unsigned int length)
-{
-
-    struct vstring vstring;
-
-    if (parsevstring(&vstring, data, length))
-        printvstring(fd, fmt, &vstring);
-
-}
-
-static void printcsv(unsigned int fd, char *data, unsigned int count)
+static void dprintcsv(unsigned int fd, char *data, unsigned int count)
 {
 
     unsigned int offset;
@@ -626,7 +616,7 @@ static void printcsv(unsigned int fd, char *data, unsigned int count)
         struct vstring vstring;
 
         if (parsevstring(&vstring, data + offset, length))
-            printvstring(fd, "%A\n", &vstring);
+            dprintvstring(fd, "%A\n", &vstring);
 
     }
 
@@ -1041,7 +1031,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                     struct vstring vstring;
 
                     if (parsevstring(&vstring, data + offset2, length2))
-                        printvstring(SYS_FD_STDERR, offset2 ? " | %A" : "%A", &vstring);
+                        dprintvstring(SYS_FD_STDERR, offset2 ? " | %A" : "%A", &vstring);
 
                 }
 
@@ -1057,7 +1047,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (child)
                     nmatched = addmatched(child, matched, maxmatched, nmatched);
                 else
-                    printvstringtext(SYS_FD_STDERR, "WARNING: found no match for %A\n", data, length);
+                    dprintf(SYS_FD_STDERR, "WARNING: found no match for %.*s\n", length, data);
 
             }
 
@@ -1271,14 +1261,14 @@ static int command_depends(int argc, char **argv)
                     char fieldbuffer[FIELDBUFFER_SIZE];
                     unsigned int count = readfield(entry, fieldbuffer, FIELDBUFFER_SIZE, "Depends");
 
-                    printcsv(SYS_FD_STDOUT, fieldbuffer, count);
+                    dprintcsv(SYS_FD_STDOUT, fieldbuffer, count);
 
                 }
 
                 else
                 {
 
-                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%.*s' was found\n", length, argv[0] + offset);
 
                     return EXIT_FAILURE;
 
@@ -1329,7 +1319,7 @@ static int command_list(int argc, char **argv)
 
                 struct entry *current = &entries[i];
 
-                printvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
+                dprintvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
 
             }
 
@@ -1419,7 +1409,7 @@ static int command_raw(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%.*s' was found\n", length, argv[0] + offset);
 
                     return EXIT_FAILURE;
 
@@ -1499,7 +1489,7 @@ static int command_rdepends(int argc, char **argv)
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
                                     if (compareversions(relation, entry->vstring.version.data, entry->vstring.version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
-                                        printvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
+                                        dprintvstring(SYS_FD_STDOUT, "%A\n", &current->vstring);
 
                                 }
 
@@ -1514,7 +1504,7 @@ static int command_rdepends(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%.*s' was found\n", length, argv[0] + offset);
 
                     return EXIT_FAILURE;
 
@@ -1579,7 +1569,7 @@ static int command_resolve(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%.*s' was found\n", length, argv[0] + offset);
 
                     return EXIT_FAILURE;
 
@@ -1588,7 +1578,7 @@ static int command_resolve(int argc, char **argv)
             }
 
             for (i = nmatched; i > 0; i--)
-                printvstring(SYS_FD_STDOUT, "%A\n", &matched[i - 1]->vstring);
+                dprintvstring(SYS_FD_STDOUT, "%A\n", &matched[i - 1]->vstring);
 
         }
 
@@ -1653,7 +1643,7 @@ static int command_show(int argc, char **argv)
                     {
 
                         dprintf(SYS_FD_STDOUT, "# %s:\n", fields[i]);
-                        printcsv(SYS_FD_STDOUT, fieldbuffer, count);
+                        dprintcsv(SYS_FD_STDOUT, fieldbuffer, count);
 
                     }
 
@@ -1665,7 +1655,7 @@ static int command_show(int argc, char **argv)
             else
             {
 
-                printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
+                dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%s' was found\n", argv[0]);
 
                 return EXIT_FAILURE;
 
@@ -1728,7 +1718,7 @@ static int command_size(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(SYS_FD_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    dprintf(SYS_FD_STDERR, "ERROR: No entry with the name '%.*s' was found\n", length, argv[0] + offset);
 
                     return EXIT_FAILURE;
 
