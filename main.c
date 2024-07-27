@@ -1026,19 +1026,19 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (found)
                     continue;
 
-                dprintf(2, "WARNING: found no match for [");
+                dprintf(SYSCALL_STDERR, "WARNING: found no match for [");
 
                 for (offset2 = 0; (length2 = eachpipe(data, length, offset2)); offset2 += length2)
                 {
 
                     if (offset2)
-                        printvstringtext(2, " | %A", data + offset2, length2);
+                        printvstringtext(SYSCALL_STDERR, " | %A", data + offset2, length2);
                     else
-                        printvstringtext(2, "%A", data + offset2, length2);
+                        printvstringtext(SYSCALL_STDERR, "%A", data + offset2, length2);
 
                 }
 
-                dprintf(2, "]\n");
+                dprintf(SYSCALL_STDERR, "]\n");
 
             }
 
@@ -1050,7 +1050,7 @@ static unsigned int resolve(struct entry *entry, struct entry *entries, unsigned
                 if (child)
                     nmatched = addmatched(child, matched, maxmatched, nmatched);
                 else
-                    printvstringtext(2, "WARNING: found no match for %A\n", data, length);
+                    printvstringtext(SYSCALL_STDERR, "WARNING: found no match for %A\n", data, length);
 
             }
 
@@ -1123,7 +1123,7 @@ static unsigned int parsefile(char *filename, struct entry *entries, unsigned in
                     else
                     {
 
-                        dprintf(2, "WARNING: max number of entries reached (%u)\n", nentries);
+                        dprintf(SYSCALL_STDERR, "WARNING: max number of entries reached (%u)\n", nentries);
 
                         return nentries;
 
@@ -1216,7 +1216,7 @@ static int command_compare(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: Unknown comparison operator %s\n", argv[1]);
+            dprintf(SYSCALL_STDERR, "ERROR: Unknown comparison operator %s\n", argv[1]);
 
             return EXIT_FAILURE;
 
@@ -1264,14 +1264,14 @@ static int command_depends(int argc, char **argv)
                     char fieldbuffer[FIELDBUFFER_SIZE];
                     unsigned int count = readfield(entry, fieldbuffer, FIELDBUFFER_SIZE, "Depends");
 
-                    printcsv(1, fieldbuffer, count);
+                    printcsv(SYSCALL_STDOUT, fieldbuffer, count);
 
                 }
 
                 else
                 {
 
-                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1284,7 +1284,7 @@ static int command_depends(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1322,7 +1322,7 @@ static int command_list(int argc, char **argv)
 
                 struct entry *current = &entries[i];
 
-                printvstring(1, "%A\n", &current->vstring);
+                printvstring(SYSCALL_STDOUT, "%A\n", &current->vstring);
 
             }
 
@@ -1331,7 +1331,7 @@ static int command_list(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1412,7 +1412,7 @@ static int command_raw(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1425,7 +1425,7 @@ static int command_raw(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1492,7 +1492,7 @@ static int command_rdepends(int argc, char **argv)
                                     unsigned int relation = getrelation(dependency.relation.data, dependency.relation.length);
 
                                     if (compareversions(relation, entry->vstring.version.data, entry->vstring.version.length, dependency.version.data, dependency.version.length) == COMPARE_VALID)
-                                        printvstring(1, "%A\n", &current->vstring);
+                                        printvstring(SYSCALL_STDOUT, "%A\n", &current->vstring);
 
                                 }
 
@@ -1507,7 +1507,7 @@ static int command_rdepends(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1520,7 +1520,7 @@ static int command_rdepends(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1572,7 +1572,7 @@ static int command_resolve(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1581,14 +1581,14 @@ static int command_resolve(int argc, char **argv)
             }
 
             for (i = nmatched; i > 0; i--)
-                printvstring(1, "%A\n", &matched[i - 1]->vstring);
+                printvstring(SYSCALL_STDOUT, "%A\n", &matched[i - 1]->vstring);
 
         }
 
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1645,8 +1645,8 @@ static int command_show(int argc, char **argv)
                     if (count)
                     {
 
-                        dprintf(1, "# %s:\n", fields[i]);
-                        printcsv(1, fieldbuffer, count);
+                        dprintf(SYSCALL_STDOUT, "# %s:\n", fields[i]);
+                        printcsv(SYSCALL_STDOUT, fieldbuffer, count);
 
                     }
 
@@ -1658,7 +1658,7 @@ static int command_show(int argc, char **argv)
             else
             {
 
-                printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
+                printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0], strlen(argv[0]));
 
                 return EXIT_FAILURE;
 
@@ -1669,7 +1669,7 @@ static int command_show(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1721,7 +1721,7 @@ static int command_size(int argc, char **argv)
                 else
                 {
 
-                    printvstringtext(2, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
+                    printvstringtext(SYSCALL_STDERR, "ERROR: No entry with the name '%A' was found\n", argv[0] + offset, length);
 
                     return EXIT_FAILURE;
 
@@ -1737,7 +1737,7 @@ static int command_size(int argc, char **argv)
         else
         {
 
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
+            dprintf(SYSCALL_STDERR, "ERROR: No entries found in package file(s)\n");
 
             return EXIT_FAILURE;
 
@@ -1803,7 +1803,7 @@ int main(int argc, char **argv)
 
         }
 
-        dprintf(2, "ERROR: Unknown command %s\n", argv[1]);
+        dprintf(SYSCALL_STDERR, "ERROR: Unknown command %s\n", argv[1]);
 
         return EXIT_FAILURE;
 
