@@ -1239,53 +1239,6 @@ static int command_compare(int argc, char **argv)
 
 }
 
-static int command_list(int argc, char **argv)
-{
-
-    if (argc >= 1)
-    {
-
-        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
-
-        if (nentries)
-        {
-
-            unsigned int i;
-
-            for (i = 0; i < nentries; i++)
-            {
-
-                struct entry *current = &entries[i];
-
-                printvstring(1, "%A\n", &current->vstring);
-
-            }
-
-        }
-
-        else
-        {
-
-            dprintf(2, "ERROR: No entries found in package file(s)\n");
-
-            return EXIT_FAILURE;
-
-        }
-
-    }
-
-    else
-    {
-
-        printf("list <index-file>...\n\n");
-        printf("List all packages\n");
-
-    }
-
-    return EXIT_SUCCESS;
-
-}
-
 static int command_depends(int argc, char **argv)
 {
 
@@ -1344,6 +1297,53 @@ static int command_depends(int argc, char **argv)
 
         printf("depends <package-expression> <index-file>...\n\n");
         printf("Show dependencies of packages that matches the package expression\n");
+
+    }
+
+    return EXIT_SUCCESS;
+
+}
+
+static int command_list(int argc, char **argv)
+{
+
+    if (argc >= 1)
+    {
+
+        unsigned int nentries = parsefiles(argc, argv, entries, MAX_ENTRIES);
+
+        if (nentries)
+        {
+
+            unsigned int i;
+
+            for (i = 0; i < nentries; i++)
+            {
+
+                struct entry *current = &entries[i];
+
+                printvstring(1, "%A\n", &current->vstring);
+
+            }
+
+        }
+
+        else
+        {
+
+            dprintf(2, "ERROR: No entries found in package file(s)\n");
+
+            return EXIT_FAILURE;
+
+        }
+
+    }
+
+    else
+    {
+
+        printf("list <index-file>...\n\n");
+        printf("List all packages\n");
 
     }
 
